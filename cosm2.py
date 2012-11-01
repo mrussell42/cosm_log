@@ -14,34 +14,28 @@ import time
 import httplib
 import os
 import subprocess
+import RPi.GPIO as GPIO
 
-#import math
+
+
+import math
 
 # parameters
-API_KEY = 'PqhIzb_R767PMeBR8NsX97Y555eSAKxyQmRzTGRhcnc4ND0g'
-API_URL = 76780
+fID=open('cosmfeedID.txt')
+feed_url=fID.read().strip()
+fID.close()
+fKEY=open('cosmkey.txt')
+feed_key=fKEY.read().rstrip()
+fKEY.close()
 
-#pac = eeml.Cosm(API_URL, API_KEY)
-#at = datetime.datetime.utcnow()
+print "Found feed ID  {:s}".format(feed_url)
+print "Found feed key {:s}".format(feed_key)
 
-#pac._use_https=True
-#print at
-#for i in range(3,3000):
-#pac.update([eeml.Data('1',34, unit=eeml.Unit('kg',type_='basicSI',symbol='kg'))])
-    #at = datetime.datetime.utcnow()
-    
-    #pac.update(eeml.Data('Mass',80-(math.fmod(i,5)**2),at=at))
-    #print pac.geteeml(False)
-    #pac.put()
-    #time.sleep(30)
-    
-#datastring= '10,' + str(at) + 'Z,56\n'+ 'Mass,' + str(at) + 'Z,55\n' 
 
-#print datastring
 def submitdata(feedno,key,data):
     
     conn = httplib.HTTPSConnection('api.cosm.com', timeout=10)
-    feedpath='/v2/feeds/{:d}.csv'.format(feedno)
+    feedpath='/v2/feeds/{:s}.csv'.format(str(feedno))
     print "updating feed: " + feedpath
     print "Key: " + key
     print "data: " + data
@@ -76,31 +70,111 @@ def cpuload(interval):
     return load
 
 
-# feed parameters
+GPIO.setmode(GPIO.BCM)
+DEBUG = 1
 
-testAPI_KEY = 'CdUrvVUGJkZcDzeCJmSg_v-gyoqSAKxCR28xVUFhYjhoRT0g'
+# read SPI data from MCP3008 chip, 8 possible adc's (0 thru 7)
+def readadc(adcnum, clockpin, mosipin, misopin, cspin):
+        if ((adcnum > 7) or (adcnum < 0)):
+                return -1
+        GPIO.output(cspin, True)
+
+        GPIO.output(clockpin, False)  # start clock low
+        GPIO.output(cspin, False)     # bring CS low
+
+        commandout = adcnum
+        commandout |= 0x18  # start bit + single-ended bit
+        commandout <<= 3    # we only need to send 5 bits here
+        for i in range(5):
+                if (commandout & 0x80):
+                        GPIO.output(mosipin, True)
+                else:
+                        GPIO.output(mosipin, False)
+                commandout <<= 1
+                GPIO.output(clockpin, True)
+                GPIO.output(clockpin, False)
+
+        adcout = 0
+        # read in one empty bit, one null bit and 10 ADC bits
+        for i in range(12):
+                GPIO.output(clockpin, True)
+                GPIO.output(clockpin, False)
+                adcout <<= 1
+                if (GPIO.input(misopin)):
+                        adcout |= 0x1
+
+        GPIO.output(cspin, True)
+        
+        adcout >>= 1       # first bit is 'null' so drop it
+        return adcout
+
+# change these as desired - they're the pins connected from the
+# SPI port on the ADC to the Cobbler
+SPICLK = 17
+SPIMISO = 10
+SPIMOSI = 9
+SPICS = 11
+
+# set up the SPI interface pins
+GPIO.setup(SPIMOSI, GPIO.OUT)
+GPIO.setup(SPIMISO, GPIO.IN)
+GPIO.setup(SPICLK, GPIO.OUT)
+GPIO.setup(SPICS, GPIO.OUT)
+
+import random
+
+def meas_temp(senseID):
+    temperature=0
+    n=10
+    for d in range(n):
+        # 10 bit number in range 0-1023
+        #adcval=readadc(senseID, SPICLK, SPIMOSI, SPIMISO, SPICS)
+        adcval=232+random.randrange(50)
+        temperature+=25.0+((3.3*(adcval/1023.0))-0.75)/(0.01) # 750mV at 25degC with 10mV/degC
+        time.sleep(0.1)
+    return temperature/float(n)
+
+
+
+# feed parameters
+testAPI_KEY = feed_key
 testAPI_URL = 82576
 
 #last_cpu=os.times()
 
-for j in range(48):
+#for j in range(48):
+while True:
     # once an hour update the stream
     streamname=[]
     thetime=[]
     data=[]
 
+    streamhome=[]
+    timehome=[]
+    datahome=[]
     for i in range(60):
         # Measure the cpu usage over the last minute
         #time.sleep(2)
         streamname.append('cpu')
         thetime.append(str(datetime.datetime.utcnow()))
-        cpul=cpuload(30)
+        cpul=cpuload(2)
         data.append(cpul*100.0) # convert to a percent
-        print "{:s}  {:e}".format(thetime[i],data[i])
+        #print "{:s}  {:e}".format(thetime[i],data[i])
+        
+        streamhome.append('tempinside')
+        timehome.append(str(datetime.datetime.utcnow()))
+        datahome.append("{:2.2f}".format(meas_temp(0)))
+        #print "{:s}  {:s} degC".format(timehome[i],datahome[i])
 
-
-        testdatastring=builddatacsv(streamname,thetime,data)
+        
+    homedatastring=builddatacsv(streamhome,timehome,datahome)
+    testdatastring=builddatacsv(streamname,thetime,data)
         #print testdatastring
-
+#    print testAPI_URL
+#    print testAPI_KEY
+#    print feed_url
+#    print feed_key
     submitdata(testAPI_URL,testAPI_KEY,testdatastring)
+    submitdata(feed_url,feed_key,homedatastring)
+
 
