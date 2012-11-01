@@ -116,6 +116,7 @@ SPIMOSI = 9
 SPICS = 11
 
 # set up the SPI interface pins
+GPIO.setwarnings(False)        
 GPIO.setup(SPIMOSI, GPIO.OUT)
 GPIO.setup(SPIMISO, GPIO.IN)
 GPIO.setup(SPICLK, GPIO.OUT)
@@ -125,14 +126,17 @@ import random
 
 def meas_temp(senseID):
     temperature=0
-    n=10
+    n=60
     for d in range(n):
         # 10 bit number in range 0-1023
-        #adcval=readadc(senseID, SPICLK, SPIMOSI, SPIMISO, SPICS)
-        adcval=232+random.randrange(50)
+        adcval=readadc(senseID, SPICLK, SPIMOSI, SPIMISO, SPICS)
+        #print adcval
+#adcval=232+random.randrange(50)
         temperature+=25.0+((3.3*(adcval/1023.0))-0.75)/(0.01) # 750mV at 25degC with 10mV/degC
-        time.sleep(0.1)
-    return temperature/float(n)
+        print "{:2.2f} ".format(temperature/(float(d)+1.0))
+        time.sleep(1)
+    #print "Averaged {:2.2f}".format(temperature/float(n))
+    return temperature/(float(n))
 
 
 
@@ -152,18 +156,22 @@ while True:
     streamhome=[]
     timehome=[]
     datahome=[]
-    for i in range(60):
+    for i in range(15):
         # Measure the cpu usage over the last minute
         #time.sleep(2)
-        streamname.append('cpu')
-        thetime.append(str(datetime.datetime.utcnow()))
-        cpul=cpuload(2)
-        data.append(cpul*100.0) # convert to a percent
+        #streamname.append('cpu')
+        #thetime.append(str(datetime.datetime.utcnow()))
+        #cpul=cpuload(2)
+        #data.append(cpul*100.0) # convert to a percent
         #print "{:s}  {:e}".format(thetime[i],data[i])
         
         streamhome.append('tempinside')
         timehome.append(str(datetime.datetime.utcnow()))
-        datahome.append("{:2.2f}".format(meas_temp(0)))
+        tempintern=meas_temp(1)
+        print "{:2.2f} ".format(tempintern)
+        
+        datahome.append("{:2.2f}".format(tempintern))
+        
         #print "{:s}  {:s} degC".format(timehome[i],datahome[i])
 
         
@@ -174,7 +182,8 @@ while True:
 #    print testAPI_KEY
 #    print feed_url
 #    print feed_key
-    submitdata(testAPI_URL,testAPI_KEY,testdatastring)
+    print "submitting temps"
+#    submitdata(testAPI_URL,testAPI_KEY,testdatastring)
     submitdata(feed_url,feed_key,homedatastring)
 
 
