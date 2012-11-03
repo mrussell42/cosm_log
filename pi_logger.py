@@ -1,11 +1,4 @@
-# -*- coding:utf-8 -*-
-"""
-Created on 20 Sep 2012
-
-@author: matthew.russell
-"""
-
-
+#!/usr/bin/python
 
 #import eeml
 import datetime
@@ -42,9 +35,13 @@ def submitdata(feedno,key,data):
     
     
     conn.request('PUT',feedpath,data,{'X-ApiKey': key})
-    conn.sock.settimeout(5.0)
-    resp=conn.getresponse()
-    resp.read()
+    conn.sock.settimeout(30)
+    try:
+        resp=conn.getresponse()
+        resp.read()
+    except (RuntimeError, TypeError, NameError):
+        print "There was an error uploading {:s}\n".format(RuntimeError)
+        
     conn.close()
     print resp.status
 
@@ -133,7 +130,7 @@ def meas_temp(senseID):
         #print adcval
 #adcval=232+random.randrange(50)
         temperature+=25.0+((3.3*(adcval/1023.0))-0.75)/(0.01) # 750mV at 25degC with 10mV/degC
-        print "{:2.2f} ".format(temperature/(float(d)+1.0))
+        #print "{:2.2f} ".format(temperature/(float(d)+1.0))
         time.sleep(1)
     #print "Averaged {:2.2f}".format(temperature/float(n))
     return temperature/(float(n))
@@ -156,21 +153,21 @@ while True:
     streamhome=[]
     timehome=[]
     datahome=[]
-    for i in range(15):
+    for i in range(30):
         # Measure the cpu usage over the last minute
         #time.sleep(2)
-        #streamname.append('cpu')
-        #thetime.append(str(datetime.datetime.utcnow()))
-        #cpul=cpuload(2)
-        #data.append(cpul*100.0) # convert to a percent
+        streamname.append('cpu')
+        thetime.append(str(datetime.datetime.utcnow()))
+        cpul=cpuload(2)
+        data.append(cpul*100.0) # convert to a percent
         #print "{:s}  {:e}".format(thetime[i],data[i])
         
         streamhome.append('tempinside')
         timehome.append(str(datetime.datetime.utcnow()))
         tempintern=meas_temp(1)
-        print "{:2.2f} ".format(tempintern)
+        print "{:s}  Temp Internal {:2.2f}   CPU Load {:2.1f}".format(thetime[i],tempintern,data[i])
         
-        datahome.append("{:2.2f}".format(tempintern))
+        datahome.append("{:2.3f}".format(tempintern))
         
         #print "{:s}  {:s} degC".format(timehome[i],datahome[i])
 
@@ -183,7 +180,11 @@ while True:
 #    print feed_url
 #    print feed_key
     print "submitting temps"
-#    submitdata(testAPI_URL,testAPI_KEY,testdatastring)
+    submitdata(testAPI_URL,testAPI_KEY,testdatastring)
     submitdata(feed_url,feed_key,homedatastring)
+    
+    fLOG=open('datalog.txt','a')
+    fLOG.write(homedatastring)
+    fLOG.close()
 
 
