@@ -122,18 +122,11 @@ GPIO.setup(SPICS, GPIO.OUT)
 import random
 
 def meas_temp(senseID):
-    temperature=0
-    n=60
-    for d in range(n):
-        # 10 bit number in range 0-1023
-        adcval=readadc(senseID, SPICLK, SPIMOSI, SPIMISO, SPICS)
-        #print adcval
-#adcval=232+random.randrange(50)
-        temperature+=25.0+((3.3*(adcval/1023.0))-0.75)/(0.01) # 750mV at 25degC with 10mV/degC
-        #print "{:2.2f} ".format(temperature/(float(d)+1.0))
-        time.sleep(1)
-    #print "Averaged {:2.2f}".format(temperature/float(n))
-    return temperature/(float(n))
+    # 10 bit number in range 0-1023
+    adcval=readadc(senseID, SPICLK, SPIMOSI, SPIMISO, SPICS)
+    #print adcval
+    temperature=25.0+((3.3*(adcval/1023.0))-0.75)/(0.01) # 750mV at 25degC with 10mV/degC
+    return temperature
 
 
 
@@ -153,23 +146,23 @@ while True:
     streamhome=[]
     timehome=[]
     datahome=[]
-    for i in range(30):
+    for i in range(3):
         # Measure the cpu usage over the last minute
         #time.sleep(2)
         streamname.append('cpu')
         thetime.append(str(datetime.datetime.utcnow()))
-        cpul=cpuload(2)
-        data.append(cpul*100.0) # convert to a percent
-        #print "{:s}  {:e}".format(thetime[i],data[i])
-        
         streamhome.append('tempinside')
         timehome.append(str(datetime.datetime.utcnow()))
-        tempintern=meas_temp(1)
-        print "{:s}  Temp Internal {:2.2f}   CPU Load {:2.1f}".format(thetime[i],tempintern,data[i])
+        avelen=5*60
+        cpusum=0
+        tempint=0
+        for count in range(avelen):
+              cpusum+=cpuload(1)
+              tempint+=meas_temp(1)
+        data.append(cpusum*100.0/avelen) # convert to a percent
+        datahome.append("{:2.3f}".format(tempint/avelen))
+        print "{:s}  Temp Internal {:2.2f}   CPU Load {:2.1f}".format(thetime[i],tempint/avelen,cpusum*100.0/avelen)
         
-        datahome.append("{:2.3f}".format(tempintern))
-        
-        #print "{:s}  {:s} degC".format(timehome[i],datahome[i])
 
         
     homedatastring=builddatacsv(streamhome,timehome,datahome)
