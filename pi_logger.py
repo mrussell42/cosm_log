@@ -93,7 +93,7 @@ def readadc(adcnum, clockpin, mosipin, misopin, cspin):
 
         adcout = 0
         # read in one empty bit, one null bit and 10 ADC bits
-        for i in range(12):
+        for i in range(14):
                 GPIO.output(clockpin, True)
                 GPIO.output(clockpin, False)
                 adcout <<= 1
@@ -122,10 +122,10 @@ GPIO.setup(SPICS, GPIO.OUT)
 import random
 
 def meas_temp(senseID):
-    # 10 bit number in range 0-1023
+    # 12 bit number in range 0-4095
     adcval=readadc(senseID, SPICLK, SPIMOSI, SPIMISO, SPICS)
     #print adcval
-    temperature=25.0+((3.3*(adcval/1023.0))-0.75)/(0.01) # 750mV at 25degC with 10mV/degC
+    temperature=25.0+((3.3*(adcval/4095.0))-0.75)/(0.01) # 750mV at 25degC with 10mV/degC
     return temperature
 
 
@@ -137,6 +137,12 @@ testAPI_URL = 82576
 #last_cpu=os.times()
 
 #for j in range(48):
+
+#while True:
+#    adcval=readadc(0, SPICLK, SPIMOSI, SPIMISO, SPICS)
+#    time.sleep(0.1)
+#    print adcval
+
 while True:
     # once an hour update the stream
     streamname=[]
