@@ -8,10 +8,24 @@ import httplib
 import os
 import subprocess
 import RPi.GPIO as GPIO
-
+from sys import argv
 
 
 import math
+
+if len(argv)>1:
+    avelen=int(argv[1])
+else:
+    avelen=5*60
+
+if len(argv)>2:
+    adcmode=1
+else:
+    adcmode=0
+
+        
+
+
 
 # parameters
 fID=open('cosmfeedID.txt')
@@ -26,24 +40,24 @@ print "Found feed key {:s}".format(feed_key)
 
 
 def submitdata(feedno,key,data):
-    
-    conn = httplib.HTTPSConnection('api.cosm.com', timeout=10)
-    feedpath='/v2/feeds/{:s}.csv'.format(str(feedno))
-    print "updating feed: " + feedpath
-    print "Key: " + key
-    print "data: " + data
-    
-    
-    conn.request('PUT',feedpath,data,{'X-ApiKey': key})
-    conn.sock.settimeout(30)
     try:
+    
+        conn = httplib.HTTPSConnection('api.cosm.com', timeout=10)
+        feedpath='/v2/feeds/{:s}.csv'.format(str(feedno))
+        print "updating feed: " + feedpath
+        print "Key: " + key
+        print "data: " + data
+    
+    
+        conn.request('PUT',feedpath,data,{'X-ApiKey': key})
+        conn.sock.settimeout(30)
         resp=conn.getresponse()
         resp.read()
-    except (RuntimeError, TypeError, NameError):
-        print "There was an error uploading {:s}\n".format(RuntimeError)
+        conn.close()
+        print resp.status
+    except :
+        print "There was an error uploading\n"
         
-    conn.close()
-    print resp.status
 
 def builddatacsv(streamname,time,data):
     csvdata=[]
@@ -121,11 +135,14 @@ GPIO.setup(SPICS, GPIO.OUT)
 
 import random
 
-def meas_temp(senseID):
+def meas_temp(senseID,sense_type):
     # 12 bit number in range 0-4095
     adcval=readadc(senseID, SPICLK, SPIMOSI, SPIMISO, SPICS)
     #print adcval
-    temperature=25.0+((3.3*(adcval/4095.0))-0.75)/(0.01) # 750mV at 25degC with 10mV/degC
+    if sense_type==36:
+        temperature=25.0+((3.3*(adcval/4095.0))-0.75)/(0.01) # 750mV at 25degC with 10mV/degC
+    else:
+        temperature=25.0+((3.3*(adcval/4095.0))-0.5)/(0.02) # 500mV at 25degC with 20mV/degC
     return temperature
 
 
@@ -138,10 +155,10 @@ testAPI_URL = 82576
 
 #for j in range(48):
 
-#while True:
-#    adcval=readadc(0, SPICLK, SPIMOSI, SPIMISO, SPICS)
-#    time.sleep(0.1)
-#    print adcval
+while adcmode:
+    adcval=readadc(adcmode-1, SPICLK, SPIMOSI, SPIMISO, SPICS)
+    time.sleep(0.1)
+    print adcval
 
 while True:
     # once an hour update the stream
@@ -155,19 +172,26 @@ while True:
     for i in range(3):
         # Measure the cpu usage over the last minute
         #time.sleep(2)
-        streamname.append('cpu')
-        thetime.append(str(datetime.datetime.utcnow()))
-        streamhome.append('tempinside')
-        timehome.append(str(datetime.datetime.utcnow()))
-        avelen=5*60
         cpusum=0
         tempint=0
+        tempext=0
         for count in range(avelen):
               cpusum+=cpuload(1)
-              tempint+=meas_temp(1)
+              tempint+=meas_temp(1,36)
+              tempext+=meas_temp(2,36)
+        streamname.append('cpu')
+        thetime.append(str(datetime.datetime.utcnow()))
         data.append(cpusum*100.0/avelen) # convert to a percent
+
+        streamhome.append('tempinside')
+        timehome.append(str(datetime.datetime.utcnow()))
         datahome.append("{:2.3f}".format(tempint/avelen))
-        print "{:s}  Temp Internal {:2.2f}   CPU Load {:2.1f}".format(thetime[i],tempint/avelen,cpusum*100.0/avelen)
+
+        streamhome.append('tempoutside')
+        timehome.append(str(datetime.datetime.utcnow()))
+        datahome.append("{:2.3f}".format(tempext/avelen))
+
+        print "{:s}  Temp Internal {:2.2f}  Temp External {:2.2f}   CPU Load {:2.1f}".format(thetime[i],tempint/avelen,tempext/avelen,cpusum*100.0/avelen)
         
 
         
