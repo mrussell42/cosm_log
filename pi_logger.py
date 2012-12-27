@@ -164,7 +164,7 @@ while adcmode:
         adcval=0
         for i in range(1000):
             adcval+=readadc(adcmode-1, SPICLK, SPIMOSI, SPIMISO, SPICS)
-        print datetime.datetime.utcnow()+ " " + str(adcval/1000)
+        print str(datetime.datetime.utcnow())+ " " + str(adcval/1000)
 
 while True:
     # once an hour update the stream
