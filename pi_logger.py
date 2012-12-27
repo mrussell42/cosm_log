@@ -19,7 +19,7 @@ else:
     avelen=5*60
 
 if len(argv)>2:
-    adcmode=1
+    adcmode=int(argv[2])
 else:
     adcmode=0
 
@@ -156,9 +156,10 @@ testAPI_URL = 82576
 #for j in range(48):
 
 while adcmode:
+
     adcval=readadc(adcmode-1, SPICLK, SPIMOSI, SPIMISO, SPICS)
     time.sleep(0.1)
-    print adcval
+    print "adcmode on channel {:d} : {:d}".format(adcmode,adcval)
 
 while True:
     # once an hour update the stream
