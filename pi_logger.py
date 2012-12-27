@@ -156,10 +156,15 @@ testAPI_URL = 82576
 #for j in range(48):
 
 while adcmode:
-
-    adcval=readadc(adcmode-1, SPICLK, SPIMOSI, SPIMISO, SPICS)
-    time.sleep(0.1)
-    print "adcmode on channel {:d} : {:d}".format(adcmode,adcval)
+    if adcmode>0:
+        adcval=readadc(adcmode-1, SPICLK, SPIMOSI, SPIMISO, SPICS)
+        time.sleep(0.1)
+        print "adcmode on channel {:d} : {:d}".format(adcmode,adcval)
+    else:
+        adcval=0
+        for i in range(1000):
+            adcval+=readadc(adcmode-1, SPICLK, SPIMOSI, SPIMISO, SPICS)
+        print datetime.datetime.utcnow()+ " " + str(adcval/1000)
 
 while True:
     # once an hour update the stream
