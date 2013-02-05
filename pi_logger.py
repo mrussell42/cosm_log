@@ -115,24 +115,27 @@ while True:
         timehome.append(str(datetime.datetime.utcnow()))
         datahome.append("{:2.3f}".format(tempint/avelen))
 
-        streamhome.append('tempoutside')
-        timehome.append(str(datetime.datetime.utcnow()))
-        datahome.append("{:2.3f}".format(tempext/avelen))
+        if tempext>-20:
+            # if the temperature is less than -20C outside then there 
+            # is probably an error with the ADC measurement so we don't log it.
+            streamhome.append('tempoutside')
+            timehome.append(str(datetime.datetime.utcnow()))
+            datahome.append("{:2.3f}".format(tempext/avelen))
 
         print "{:s}  Temp Internal {:2.2f}  Temp External {:2.2f}   CPU Load {:2.1f}".format(thetime[i],tempint/avelen,tempext/avelen,cpusum*100.0/avelen)
         
 
         
-    homedatastring=builddatacsv(streamhome,timehome,datahome)
-    testdatastring=builddatacsv(streamname,thetime,data)
+    homedatastring=pi_cosm.builddatacsv(streamhome,timehome,datahome)
+    testdatastring=pi_cosm.builddatacsv(streamname,thetime,data)
         #print testdatastring
 #    print cpu_ID
 #    print cpu_key
 #    print home_ID
 #    print home_key
     print "submitting temps"
-    submitdata(cpu_ID,cpu_key,testdatastring)
-    submitdata(home_ID,home_key,homedatastring)
+    pi_cosm.submitdata(cpu_ID,cpu_key,testdatastring)
+    pi_cosm.submitdata(home_ID,home_key,homedatastring)
     
     fLOG=open('datalog.txt','a')
     fLOG.write(homedatastring)
