@@ -32,3 +32,4 @@ def builddatacsv(streamname,time,data):
         csvdata += time[i] +','
         csvdata += str(data[i])+'\n'
     return ''.join(csvdata)
+

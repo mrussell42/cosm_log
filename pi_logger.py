@@ -11,6 +11,8 @@ import pi_adc
 import pi_cosm
 
 
+# 1st arg average length
+# 2nd arg display adc values
 
 if len(sys.argv)>1:
     avelen=int(sys.argv[1])
@@ -50,6 +52,9 @@ def meas_temp(senseID,sense_type):
     return temperature
 
 
+def elecpulsecallback(ch_num):
+    # Get the last count
+    # If the count > 100 write the time to a file.
 
 # feed parameters
 fID=open('cosmfeedID.txt')
@@ -81,11 +86,16 @@ while adcmode:
     if adcmode>0:
         adcval=pi_adc.readadc(adcmode-1, SPICLK, SPIMOSI, SPIMISO, SPICS)
         time.sleep(0.1)
-        print "adcmode on channel {:d} : {:d}".format(adcmode,adcval)
+        temperature36=25.0+((3.3*(adcval/4095.0))-0.75)/(0.01) # 750mV at 25degC with 10mV/degC
+        temperature37=25.0+((3.3*(adcval/4095.0))-0.5)/(0.02) # 500mV at 25degC with 20mV/degC
+    
+        print "adcmode on channel {:d} : {:d} {:2.2f}degC  {:2.2f}degC".format(adcmode,adcval,temperature36,temperature37)
     else:
         adcval=0
         for i in range(1000):
-            adcval+=pi_adc.readadc(-adcmode-1, SPICLK, SPIMOSI, SPIMISO, SPICS)
+            #adcval+=pi_adc.readadc(-adcmode-1, SPICLK, SPIMOSI, SPIMISO, SPICS)
+            adcval+=meastemp(-adcmode-1,36)
+
         print str(datetime.datetime.utcnow())+ " " + str(adcval/1000.0)
 
 while True:
@@ -105,7 +115,7 @@ while True:
         tempext=0
         for count in range(avelen):
               cpusum+=cpuload(1)
-              tempint+=meas_temp(1,36)
+              tempint+=meas_temp(1,37)
               tempext+=meas_temp(2,36)
         streamname.append('cpu')
         thetime.append(str(datetime.datetime.utcnow()))
