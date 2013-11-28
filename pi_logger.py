@@ -9,7 +9,7 @@ import math
 import random
 import pi_adc
 import pi_cosm
-
+import RPi.GPIO as GPIO
 
 # 1st arg average length
 # 2nd arg display adc values
@@ -51,10 +51,50 @@ def meas_temp(senseID,sense_type):
         temperature=25.0+((3.3*(adcval/4095.0))-0.5)/(0.02) # 500mV at 25degC with 20mV/degC
     return temperature
 
+elecpulse=0
+elecmeter=0.0 # get this from the last in the elecmeter file
+elecpulseperkWh=800 # how many pulses of light for 1kWh
+
+PHOTOIN=14 # GPIO pin connected to Photo sensor
+
+def logelec(meterval):
+    elecfilename='elecmeter'
+    eleclogstr='{:s},{:f}\n'.format(str(datetime.datetime.utcnow()),meterval)
+    print eleclogstr
+
+    #elecLOG=open(elecfilename,'a')
+    #elecLOG.write(eleclogstr)
+    #elecLOG.close()
 
 def elecpulsecallback(ch_num):
     # Get the last count
     # If the count > 100 write the time to a file.
+    global elecpulse
+    global elecmeter
+
+    elecpulse+=1
+    print "elecpulse on ch {:d} count {:d}".format(ch_num,elecpulse)
+    if elecpulse==100:
+        #write timestamp and increment electricity meter reading by 0.1
+        elecmeter=elecmeter+100/elecpulseperkWh
+        elecpulse=elecpulse-100
+        logelec(elecmeter)
+
+                                                                                                   
+                                                                                                   
+#def elecpulsecallback(ch_num):
+#        print "pulse on {:d}".format(ch_num)
+def photo_setup(PHOTOIN):
+    print "Setting up photosensor on {:d}".format(PHOTOIN)
+    GPIO.setup(PHOTOIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.remove_event_detect(PHOTOIN)
+    GPIO.add_event_detect(PHOTOIN, GPIO.FALLING, callback=elecpulsecallback, bouncetime=200)   
+
+
+
+#photo_setup(PHOTOIN)
+
+
 
 # feed parameters
 fID=open('cosmfeedID.txt')
@@ -81,6 +121,10 @@ SPICS = 11
 # setup the ADC
 pi_adc.adc_setup(SPICLK,SPIMISO,SPIMOSI,SPICS)
 
+elecinterupt = 15
+
+#import RPi.GPIO as GPIO
+#GPIO.input(elecinterupt)
 
 while adcmode:
     if adcmode>0:
