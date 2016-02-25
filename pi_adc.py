@@ -45,7 +45,14 @@ def readadc(adcnum, clockpin, mosipin, misopin, cspin):
 
 def adc_setup(SPICLK,SPIMISO,SPIMOSI,SPICS):
 	# set up the SPI interface pins
-	GPIO.setwarnings(False)        
+#	GPIO.setwarnings(False)        
+
+	# Set them all as inputs to clear 
+	GPIO.setup(SPIMOSI, GPIO.IN)
+	GPIO.setup(SPICLK, GPIO.IN)
+	GPIO.setup(SPICS, GPIO.IN)
+
+	# Now set them as required
 	GPIO.setup(SPIMOSI, GPIO.OUT)
 	GPIO.setup(SPIMISO, GPIO.IN)
 	GPIO.setup(SPICLK, GPIO.OUT)
