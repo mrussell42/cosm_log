@@ -9,6 +9,7 @@ DEBUG = 1
 
 # read SPI data from MCP3008 chip, 8 possible adc's (0 thru 7)
 def readadc(adcnum, clockpin, mosipin, misopin, cspin):
+
         if ((adcnum > 7) or (adcnum < 0)):
                 return -1
         GPIO.output(cspin, True)
@@ -38,18 +39,16 @@ def readadc(adcnum, clockpin, mosipin, misopin, cspin):
                         adcout |= 0x1
 
         GPIO.output(cspin, True)
-        
+
         adcout >>= 1       # first bit is 'null' so drop it
         return adcout
 
 
-def adc_setup(SPICLK,SPIMISO,SPIMOSI,SPICS):
+#def adc_setup(SPICLK,SPIMISO,SPIMOSI,SPICS):
+def adc_setup(SPI_conf)
 	# set up the SPI interface pins
-	GPIO.setwarnings(False)        
-	GPIO.setup(SPIMOSI, GPIO.OUT)
-	GPIO.setup(SPIMISO, GPIO.IN)
-	GPIO.setup(SPICLK, GPIO.OUT)
-	GPIO.setup(SPICS, GPIO.OUT)
-
-
-
+	GPIO.setwarnings(False)
+	GPIO.setup(SPI_conf['SPIMOSI'], GPIO.OUT)
+	GPIO.setup(SPI_conf['SPIMISO'], GPIO.IN)
+	GPIO.setup(SPI_conf['SPICLK'], GPIO.OUT)
+	GPIO.setup(SPI_conf['SPICS'], GPIO.OUT)
