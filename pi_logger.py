@@ -40,18 +40,14 @@ def cpuload(interval):
     #print load/10
     return load
 
-def meas_temp(senseID,sense_type):
+def meas_temp(sense_id, sense_type, SPI_conf):
     # 12 bit number in range 0-4095
-    adcval=pi_adc.readadc(senseID, SPICLK, SPIMOSI, SPIMISO, SPICS)
-    #print adcval
-    if sense_type==36:
-        temperature=25.0+((3.3*(adcval/4095.0))-0.75)/(0.01) # 750mV at 25degC with 10mV/degC
-    else:
-        temperature=25.0+((3.3*(adcval/4095.0))-0.5)/(0.02) # 500mV at 25degC with 20mV/degC
+    adcval=pi_adc.readadc(sense_id, SPI_conf)
+    temperature=temp_from_adc(adcval,sense_type)
     return temperature
 
 
-def logelec(timestamp,meterval,kW):
+def logelec(timestamp, meterval, kW):
     eleclogstr='{:s},{:f},{:f}\n'.format(str(timestamp),meterval,kW)
     print eleclogstr
 
@@ -68,6 +64,9 @@ def logelec(timestamp,meterval,kW):
     elecLOG.close()
 
 def elecpulsecallback(ch_num):
+    """
+    Call back 
+    """
     # Get the last count
     # If the count > 100 write the time to a file.
     global lastelecmeter
@@ -98,13 +97,21 @@ def elecpulsecallback(ch_num):
 
 
 def photo_setup(PHOTOIN):
+    """
+    Set up the Photosensor on the given channel
+    """
+
     print "Setting up photosensor on {:d}".format(PHOTOIN)
     GPIO.setup(PHOTOIN, GPIO.IN, pull_up_down=GPIO.PUD_OFF)
     GPIO.remove_event_detect(PHOTOIN)
     GPIO.add_event_detect(PHOTOIN, GPIO.RISING, callback=elecpulsecallback, bouncetime=200)
 
 
-def temp_from_adc(adc,sensor_type):
+def temp_from_adc(adc, sensor_type):
+    """
+    Convert the ADC value to a temperature depending on the sensor type
+    """
+
     if sensor_type == 36:
         temperature=25.0+((3.3*(adcval/4095.0))-0.75)/(0.01) # 750mV at 25degC with 10mV/degC
     elif sensor_type == 37:
@@ -113,6 +120,7 @@ def temp_from_adc(adc,sensor_type):
         raise Exception('Bad sensor_type')
 
     return temperature
+
 def main()
     elecfilename='elecmeter'
     lasteleclog=os.popen("tail -n 1 %s" % elecfilename).read()
@@ -141,17 +149,6 @@ def main()
     elecresolution=0.0125 # kWh
     elecpulselimit=elecresolution*elecpulseperkWh
 
-
-    # change these as desired - they're the pins connected from the
-    # SPI port on the ADC to the Cobbler
-    SPICLK = 17
-    SPIMISO = 10
-    SPIMOSI = 9
-    SPICS = 11
-    #  GPIO for the Photo sensor
-    PHOTOIN=14
-
-
     # feed parameters
     streamhome=[]
     timehome=[]
@@ -165,14 +162,22 @@ def main()
     fKEY.close()
 
 
+    # change these as desired - they're the pins connected from the
+    # SPI port on the ADC to the Cobbler
+    # SPICLK = 17
+    # SPIMISO = 10
+    # SPIMOSI = 9
+    # SPICS = 11
+    #  GPIO for the Photo sensor
+    PHOTOIN=14
+
     SPI_conf = {'SPICLK':17, 'SPIMISO':10, 'SPIMOSI':9, 'SPICS':11}
-    pi_adc.adc_setup(SPI_conf)
 
     GPIO.setmode(GPIO.BCM)
     elecinterupt = 15
 
     # setup the ADC
-    pi_adc.adc_setup(SPICLK,SPIMISO,SPIMOSI,SPICS)
+    pi_adc.adc_setup(SPI_conf)
     # setup the Phototransistor input
     photo_setup(PHOTOIN)
 
@@ -180,7 +185,7 @@ def main()
         # adcmode is positive, read the value every 0.1 sec from the adc,
         # scale to both types of thermometer for checking
         if adcmode>0:
-            adcval=pi_adc.readadc(adcmode-1, SPICLK, SPIMOSI, SPIMISO, SPICS)
+            adcval=pi_adc.readadc(adcmode-1, SPI_conf)
             time.sleep(0.1)
             temperature36=temp_from_adc(adcval,36)
             temperature37=temp_from_adc(adcval,37)
@@ -215,42 +220,26 @@ def main()
                 cpu_sum+=cpuload(1)
                 #print "Averaging loop tick"
                 #time.sleep(3)
-                temp_int+=meas_temp(1,37)
-                temp_ext+=meas_temp(2,36)
-            temp_int = temp_int_sum/avelen
-            temp_ext = temp_ext_sum/avelen
-            cpu = cpu_sum *100.0/ avelen
+                temp_int += meas_temp(1, 37)
+                temp_ext += meas_temp(2, 36)
 
-
+            temp_int = temp_int_sum / avelen
+            temp_ext = temp_ext_sum / avelen
+            cpu = cpu_sum * 100.0 / avelen
 
             timenow = datetime.datetime.utcnow()
-            #streamname.append('cpu')
-            #thetime.append(str(datetime.datetime.utcnow()))
-            #data.append(cpusum*100.0/avelen) # convert to a percent
             streamd.append('{:s},{:s},{:1.1f}\n'.format('cpu',timenow,cpu))
             streamh.append('{:s},{:s},{:2.3f}\n'.format('tempinside',timenow,temp_int))
-            #streamhome.append('tempinside')
-            #timehome.append(str(datetime.datetime.utcnow()))
-            #datahome.append("{:2.3f}".format(tempint/avelen))
 
             if tempext>-20:
                 # if the temperature is less than -20C outside then there
                 # is probably an error with the ADC measurement so we don't log it.
-                #streamhome.append('tempoutside')
-                #timehome.append(str(datetime.datetime.utcnow()))
-                #datahome.append("{:2.3f}".format(tempext/avelen))
                 streamh.append('{:s},{:s},{:2.3f}\n'.format('tempoutside',timenow,temp_ext)
 
 
     homedatastring=pi_cosm.builddatacsv(streamhome,timehome,datahome)
     testdatastring=pi_cosm.builddatacsv(streamname,thetime,data)
-        #print testdatastring
-#    print cpu_ID
-#    print cpu_key
-#    print home_ID
-#    print home_key
     print "submitting temps"
-#    pi_cosm.submitdata(cpu_ID,cpu_key,testdatastring)
     response=pi_cosm.submitdata(home_ID,home_key,unsubmitted+homedatastring)
 
     if response==200:
@@ -265,23 +254,20 @@ def main()
     fLOG.write(homedatastring)
     fLOG.close()
 
-            print "{:s} Temp Internal {:2.2f} ".format(timenow,temp_int),
-            print "  Temp External {:2.2f}   CPU Load {:2.1f}%".format(temp_ext,cpu)
+    print "{:s} Temp Internal {:2.2f} ".format(timenow,temp_int),
+    print "  Temp External {:2.2f}   CPU Load {:2.1f}%".format(temp_ext,cpu)
 
+    testdatastring=pi_cosm.builddatacsv(streamname,thetime,data)
+    homedatastring="".join(streamh)
+    testdatastring="".join(streamd)
 
+    print "submitting temps"
+    pi_cosm.submitdata(cpu_ID,cpu_key,testdatastring)
+    pi_cosm.submitdata(home_ID,home_key,homedatastring)
 
-        #homedatastring=pi_cosm.builddatacsv(streamhome,timehome,datahome)
-        testdatastring=pi_cosm.builddatacsv(streamname,thetime,data)
-        homedatastring="".join(streamh)
-        testdatastring="".join(streamd)
-
-        print "submitting temps"
-        pi_cosm.submitdata(cpu_ID,cpu_key,testdatastring)
-        pi_cosm.submitdata(home_ID,home_key,homedatastring)
-
-        fLOG=open('datalog.txt','a')
-        fLOG.write(homedatastring)
-        fLOG.close()
+    fLOG=open('datalog.txt','a')
+    fLOG.write(homedatastring)
+    fLOG.close()
 
 if __name__ == "__main__":
     main()
