@@ -40,9 +40,6 @@ def cpuload(interval):
     #print load/10
     return load
 
-
-
-
 def meas_temp(senseID,sense_type):
     # 12 bit number in range 0-4095
     adcval=pi_adc.readadc(senseID, SPICLK, SPIMOSI, SPIMISO, SPICS)
@@ -88,20 +85,11 @@ def elecpulsecallback(ch_num):
     print "dt  {:f}".format(dt),
     print "  kWh {:f}   kW {:f}   count {:1.0f}".format(kWh,(1.0/elecpulseperkWh)*(3600.0/dt),(kWh*elecpulseperkWh))
     if (kWh*elecpulseperkWh)>elecpulselimit:
-        #elecmeter=elecmeter+elecresolution
-        #elecpulse=elecpulse-int(elecpulselimit)
-        
-        #timestamp=datetime.datetime.utcnow()
-
-        #lasteleclog=os.popen("tail -n 1 %s" % elecfilename).read()
-        #lasteleclogtimestr=lasteleclog.split(',')
-        #lasteleclogtime=datetime.datetime.strptime(lasteleclogtimestr[0],'%Y-%m-%d %H:%M:%S.%f')
-        #lastelecmeter=float(lasteleclogtimestr[1])
         interval=timestamp-lasteleclogtime
         if interval.seconds>30:
             logdt=float(interval.seconds+(interval.microseconds/1000000.0))
-            kWold=(kWh)*(3600.0/float(interval.seconds)) 
-            kW=(kWh)*(3600.0/logdt) 
+            kWold=(kWh)*(3600.0/float(interval.seconds))
+            kW=(kWh)*(3600.0/logdt)
             print "Average {:f} ({:f}) kW in the last {:f} ({:f}) sec ".format(kW,kWold,logdt,interval.seconds)
             logelec(timestamp,elecmeter,kW)
             lastelecmeter=elecmeter
@@ -113,7 +101,7 @@ def photo_setup(PHOTOIN):
     print "Setting up photosensor on {:d}".format(PHOTOIN)
     GPIO.setup(PHOTOIN, GPIO.IN, pull_up_down=GPIO.PUD_OFF)
     GPIO.remove_event_detect(PHOTOIN)
-    GPIO.add_event_detect(PHOTOIN, GPIO.RISING, callback=elecpulsecallback, bouncetime=200)   
+    GPIO.add_event_detect(PHOTOIN, GPIO.RISING, callback=elecpulsecallback, bouncetime=200)
 
 
 def temp_from_adc(adc,sensor_type):
@@ -124,15 +112,15 @@ def temp_from_adc(adc,sensor_type):
     else:
         raise Exception('Bad sensor_type')
 
-elecfilename='elecmeter'
-lasteleclog=os.popen("tail -n 1 %s" % elecfilename).read()
-lasteleclogtimestr=lasteleclog.split(',')
-#lasteleclogtime=datetime.datetime.strptime(lasteleclogtimestr[0],'%Y-%m-%d %H:%M:%S.%f')
-lasteleclogtime=datetime.datetime.utcnow()
-lastelecmeter=float(lasteleclogtimestr[1])
-lasttimestamp=datetime.datetime.utcnow()
     return temperature
 def main()
+    elecfilename='elecmeter'
+    lasteleclog=os.popen("tail -n 1 %s" % elecfilename).read()
+    lasteleclogtimestr=lasteleclog.split(',')
+    #lasteleclogtime=datetime.datetime.strptime(lasteleclogtimestr[0],'%Y-%m-%d %H:%M:%S.%f')
+    lasteleclogtime=datetime.datetime.utcnow()
+    lastelecmeter=float(lasteleclogtimestr[1])
+    lasttimestamp=datetime.datetime.utcnow()
     # feed parameters
     fID=open('cosmfeedID.txt')
     home_ID=fID.read().strip()
@@ -144,58 +132,49 @@ def main()
     print "Found feed ID  {:s}".format(home_ID)
     print "Found feed key {:s}".format(home_key)
 
-print "Loaded previous eletricity meter values {:s}  {:f}".format(str(lasteleclogtime),lastelecmeter)
-print "as logged {:s}".format(lasteleclog)
+    print "Loaded previous eletricity meter values {:s}  {:f}".format(str(lasteleclogtime),lastelecmeter)
+    print "as logged {:s}".format(lasteleclog)
 
-elecpulse=0
-elecmeter=lastelecmeter# get this from the last in the elecmeter file
-elecpulseperkWh=800.0 # how many pulses of light for 1kWh
-elecresolution=0.0125 # kWh
-elecpulselimit=elecresolution*elecpulseperkWh
-
-
-# change these as desired - they're the pins connected from the
-# SPI port on the ADC to the Cobbler
-SPICLK = 17
-SPIMISO = 10
-SPIMOSI = 9
-SPICS = 11
-#  GPIO for the Photo sensor
-PHOTOIN=14
-
-
-# feed parameters
-streamhome=[]
-timehome=[]
-datahome=[]
-unsubmitted="" # unsubmitted data 
-fID=open('cosmfeedID.txt')
-home_ID=fID.read().strip()
-fID.close()
-fKEY=open('cosmkey.txt')
-home_key=fKEY.read().rstrip()
-fKEY.close()
+    elecpulse=0
+    elecmeter=lastelecmeter# get this from the last in the elecmeter file
+    elecpulseperkWh=800.0 # how many pulses of light for 1kWh
+    elecresolution=0.0125 # kWh
+    elecpulselimit=elecresolution*elecpulseperkWh
 
 
     # change these as desired - they're the pins connected from the
     # SPI port on the ADC to the Cobbler
-    #SPICLK = 17
-    #SPIMISO = 10
-    #SPIMOSI = 9
-    #SPICS = 11
-    # setup the ADC
-    #pi_adc.adc_setup(SPICLK,SPIMISO,SPIMOSI,SPICS)
+    SPICLK = 17
+    SPIMISO = 10
+    SPIMOSI = 9
+    SPICS = 11
+    #  GPIO for the Photo sensor
+    PHOTOIN=14
+
+
+    # feed parameters
+    streamhome=[]
+    timehome=[]
+    datahome=[]
+    unsubmitted="" # unsubmitted data
+    fID=open('cosmfeedID.txt')
+    home_ID=fID.read().strip()
+    fID.close()
+    fKEY=open('cosmkey.txt')
+    home_key=fKEY.read().rstrip()
+    fKEY.close()
+
 
     SPI_conf = {'SPICLK':17, 'SPIMISO':10, 'SPIMOSI':9, 'SPICS':11}
     pi_adc.adc_setup(SPI_conf)
 
-GPIO.setmode(GPIO.BCM)
+    GPIO.setmode(GPIO.BCM)
     elecinterupt = 15
 
-# setup the ADC
-pi_adc.adc_setup(SPICLK,SPIMISO,SPIMOSI,SPICS)
-# setup the Phototransistor input
-photo_setup(PHOTOIN)
+    # setup the ADC
+    pi_adc.adc_setup(SPICLK,SPIMISO,SPIMOSI,SPICS)
+    # setup the Phototransistor input
+    photo_setup(PHOTOIN)
 
     while adcmode:
         # adcmode is positive, read the value every 0.1 sec from the adc,
@@ -218,41 +197,31 @@ photo_setup(PHOTOIN)
             print str(datetime.datetime.utcnow())+ " " + str(adcval/1000.0)
 
     while True:
-        # main loop
         # once an hour update the stream
-        #streamname=[]
-        #thetime=[]
-        #data=[]
+        streamname=[]
+        thetime=[]
+        data=[]
+        streamhome=[]
+        timehome=[]
+        datahome=[]
 
-while True:
-    # once an hour update the stream
-    streamname=[]
-    thetime=[]
-    data=[]
-    streamhome=[]
-    timehome=[]
-    datahome=[]
+        for i in range(3):
+            # Measure the cpu usage over the last minute
+            #time.sleep(2)
+            cpu_sum=0
+            temp_int=0
+            temp_ext=0
+            for count in range(int(avelen)):
+                cpu_sum+=cpuload(1)
+                #print "Averaging loop tick"
+                #time.sleep(3)
+                temp_int+=meas_temp(1,37)
+                temp_ext+=meas_temp(2,36)
+            temp_int = temp_int_sum/avelen
+            temp_ext = temp_ext_sum/avelen
+            cpu = cpu_sum *100.0/ avelen
 
-    for i in range(3):
-        # Measure the cpu usage over the last minute
-        #time.sleep(2)
-        cpusum=0
-        tempint=0
-        tempext=0
-        for count in range(int(avelen)):
-            cpusum+=cpuload(1)
-            #print "Averaging loop tick"
-            #time.sleep(3)
-            tempint+=meas_temp(1,37)
-            tempext+=meas_temp(2,36)
-            
-        streamname.append('cpu')
-        thetime.append(str(datetime.datetime.utcnow()))
-        data.append(cpusum*100.0/avelen) # convert to a percent
 
-        streamhome.append('tempinside')
-        timehome.append(str(datetime.datetime.utcnow()))
-        datahome.append("{:2.3f}".format(tempint/avelen))
 
             timenow = datetime.datetime.utcnow()
             #streamname.append('cpu')
@@ -272,7 +241,7 @@ while True:
                 #datahome.append("{:2.3f}".format(tempext/avelen))
                 streamh.append('{:s},{:s},{:2.3f}\n'.format('tempoutside',timenow,temp_ext)
 
-        
+
     homedatastring=pi_cosm.builddatacsv(streamhome,timehome,datahome)
     testdatastring=pi_cosm.builddatacsv(streamname,thetime,data)
         #print testdatastring
@@ -283,7 +252,7 @@ while True:
     print "submitting temps"
 #    pi_cosm.submitdata(cpu_ID,cpu_key,testdatastring)
     response=pi_cosm.submitdata(home_ID,home_key,unsubmitted+homedatastring)
-    
+
     if response==200:
         unsubmitted=""
         print "Unsubmitted empty"
